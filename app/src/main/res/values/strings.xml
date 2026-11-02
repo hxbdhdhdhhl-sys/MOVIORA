@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">MOVIORA</string>
+    <string name="moviora_tagline">منصة البث العالمية للأفلام والمسلسلات والأرشيف التاريخي</string>
+    <string name="cd_moviora_logo">شعار منصة MOVIORA</string>
+    <string name="cd_google_sign_in">تسجيل الدخول عبر حساب Google</string>
+    <string name="cd_language_selector">تغيير لغة التطبيق</string>
+    <string name="cd_offline_status">وضع عدم الاتصال بالإنترنت</string>
+    <string name="cd_admin_console">لوحة إدارة MOVIORA</string>
+</resources>

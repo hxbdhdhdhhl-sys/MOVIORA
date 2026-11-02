@@ -1,0 +1,6 @@
+{
+  "name": "MOVIORA",
+  "description": "منصة بث سينمائي عالمية للأفلام والمسلسلات وأرشيف الحروب العالمية والأعمال السوفيتية والروسية",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

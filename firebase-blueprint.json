@@ -1,0 +1,424 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private authenticated user profile with isolated PII and app preferences.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "email": { "type": "string", "format": "email", "description": "Verified account email" },
+        "emailVerified": { "type": "boolean", "description": "Whether email is verified" },
+        "photoUrl": { "type": "string", "description": "Avatar image URL" },
+        "preferredLanguage": { "type": "string", "description": "UI locale code" },
+        "preferredSubtitleLang": { "type": "string", "description": "Default subtitle language" },
+        "themeMode": { "type": "string", "enum": ["dark", "light", "vip_gold", "vip_velvet"] },
+        "notificationsEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "FieldValue.serverTimestamp()" }
+      },
+      "required": ["userId", "displayName", "email", "createdAt", "updatedAt"]
+    },
+    "PublicProfile": {
+      "title": "PublicProfile",
+      "description": "Non-PII public community curator profile for following and shared watchlists.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "bio": { "type": "string" },
+        "isVip": { "type": "boolean" },
+        "isPublic": { "type": "boolean" },
+        "followersCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "displayName", "isPublic", "createdAt", "updatedAt"]
+    },
+    "MediaItem": {
+      "title": "MediaItem",
+      "description": "Movie, Series, or Documentary entry in MOVIORA catalogue and History Archive.",
+      "type": "object",
+      "properties": {
+        "titleAr": { "type": "string" },
+        "titleOriginal": { "type": "string" },
+        "titleEn": { "type": "string" },
+        "titleRu": { "type": "string" },
+        "kind": { "type": "string", "enum": ["movie", "series", "documentary"] },
+        "year": { "type": "integer" },
+        "country": { "type": "string" },
+        "originalLanguage": { "type": "string" },
+        "synopsisAr": { "type": "string" },
+        "synopsisEn": { "type": "string" },
+        "synopsisRu": { "type": "string" },
+        "genres": { "type": "array" },
+        "director": { "type": "string" },
+        "cast": { "type": "array" },
+        "posterUrl": { "type": "string" },
+        "backdropUrl": { "type": "string" },
+        "accentColorHex": { "type": "string" },
+        "seasonsCount": { "type": "integer" },
+        "episodesCount": { "type": "integer" },
+        "durationMinutes": { "type": "integer" },
+        "rating": { "type": "number" },
+        "viewsCount": { "type": "integer" },
+        "availableSubtitles": { "type": "array" },
+        "availableAudio": { "type": "array" },
+        "streamStatus": { "type": "string", "enum": ["LICENSED_ACTIVE", "ARCHIVE_METADATA_ONLY"] },
+        "streamUrl": { "type": "string" },
+        "streamProtocol": { "type": "string", "enum": ["HLS", "DASH", "MP4", "NONE"] },
+        "licenseInfo": { "type": "string" },
+        "isVipExclusive": { "type": "boolean" },
+        "isDownloadAllowed": { "type": "boolean" },
+        "archiveSection": { "type": "string" },
+        "warConflict": { "type": "string" },
+        "historicalEra": { "type": "string" },
+        "historicalAccuracyNote": { "type": "string" },
+        "upcomingSeasonNote": { "type": "string" },
+        "isPublished": { "type": "boolean" },
+        "isDeleted": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["titleAr", "titleOriginal", "kind", "year", "country", "streamStatus", "isPublished", "createdAt", "updatedAt"]
+    },
+    "Season": {
+      "title": "Season",
+      "description": "Season belonging to a series.",
+      "type": "object",
+      "properties": {
+        "seriesId": { "type": "string" },
+        "seasonNumber": { "type": "integer" },
+        "titleAr": { "type": "string" },
+        "titleEn": { "type": "string" },
+        "year": { "type": "integer" },
+        "episodesCount": { "type": "integer" },
+        "isUpcoming": { "type": "boolean" },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["seriesId", "seasonNumber", "titleAr", "isPublished", "createdAt", "updatedAt"]
+    },
+    "Episode": {
+      "title": "Episode",
+      "description": "Episode belonging to a season and series.",
+      "type": "object",
+      "properties": {
+        "seriesId": { "type": "string" },
+        "seasonNumber": { "type": "integer" },
+        "episodeNumber": { "type": "integer" },
+        "titleAr": { "type": "string" },
+        "titleEn": { "type": "string" },
+        "descriptionAr": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "durationSeconds": { "type": "integer" },
+        "streamUrl": { "type": "string" },
+        "streamProtocol": { "type": "string", "enum": ["HLS", "DASH", "MP4", "NONE"] },
+        "subtitleUrlAr": { "type": "string" },
+        "subtitleUrlEn": { "type": "string" },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["seriesId", "seasonNumber", "episodeNumber", "titleAr", "durationSeconds", "isPublished", "createdAt", "updatedAt"]
+    },
+    "Person": {
+      "title": "Person",
+      "description": "Actor, Director, or Producer biography and metadata.",
+      "type": "object",
+      "properties": {
+        "nameAr": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "nameRu": { "type": "string" },
+        "role": { "type": "string", "enum": ["actor", "director", "producer", "actor_director"] },
+        "birthYear": { "type": "string" },
+        "country": { "type": "string" },
+        "bioAr": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "notableWorks": { "type": "array" },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nameAr", "nameEn", "role", "country", "isPublished", "createdAt", "updatedAt"]
+    },
+    "VideoSource": {
+      "title": "VideoSource",
+      "description": "Licensed HTTPS stream source linked to a movie or episode.",
+      "type": "object",
+      "properties": {
+        "targetId": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["movie", "episode"] },
+        "url": { "type": "string" },
+        "protocol": { "type": "string", "enum": ["HLS", "DASH", "MP4"] },
+        "maxQualityLabel": { "type": "string" },
+        "licenseName": { "type": "string" },
+        "allowOffline": { "type": "boolean" },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["targetId", "targetType", "url", "protocol", "licenseName", "isPublished", "createdAt", "updatedAt"]
+    },
+    "SubtitleSource": {
+      "title": "SubtitleSource",
+      "description": "Compatible VTT/SRT subtitle track linked to a movie or episode.",
+      "type": "object",
+      "properties": {
+        "targetId": { "type": "string" },
+        "languageCode": { "type": "string" },
+        "languageLabel": { "type": "string" },
+        "url": { "type": "string" },
+        "format": { "type": "string", "enum": ["VTT", "SRT"] },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["targetId", "languageCode", "languageLabel", "url", "format", "isPublished", "createdAt", "updatedAt"]
+    },
+    "FavoriteItem": {
+      "title": "FavoriteItem",
+      "description": "User favorite movie or series.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "mediaId": { "type": "string" },
+        "titleAr": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "mediaId", "titleAr", "createdAt"]
+    },
+    "WatchHistoryEntry": {
+      "title": "WatchHistoryEntry",
+      "description": "User playback progress and completion status.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "mediaId": { "type": "string" },
+        "episodeId": { "type": "string" },
+        "seasonNumber": { "type": "integer" },
+        "episodeNumber": { "type": "integer" },
+        "positionMs": { "type": "integer" },
+        "durationMs": { "type": "integer" },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "mediaId", "positionMs", "durationMs", "completed", "createdAt", "updatedAt"]
+    },
+    "SearchHistoryEntry": {
+      "title": "SearchHistoryEntry",
+      "description": "User search query history entry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "query": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "query", "createdAt"]
+    },
+    "UserSession": {
+      "title": "UserSession",
+      "description": "Active device session for user account management.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "deviceModel": { "type": "string" },
+        "platform": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "deviceModel", "platform", "isActive", "createdAt", "updatedAt"]
+    },
+    "Watchlist": {
+      "title": "Watchlist",
+      "description": "Custom private or public watchlist curated by a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "isPublic": { "type": "boolean" },
+        "mediaIds": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "ownerName", "name", "isPublic", "mediaIds", "createdAt", "updatedAt"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User star rating and text review with composite ID userId_mediaId.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "mediaId": { "type": "string" },
+        "rating": { "type": "integer" },
+        "comment": { "type": "string" },
+        "status": { "type": "string", "enum": ["approved", "hidden"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "authorName", "mediaId", "rating", "comment", "status", "createdAt", "updatedAt"]
+    },
+    "Follow": {
+      "title": "Follow",
+      "description": "Community user follow edge.",
+      "type": "object",
+      "properties": {
+        "followerId": { "type": "string" },
+        "targetUserId": { "type": "string" },
+        "targetName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["followerId", "targetUserId", "targetName", "createdAt"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "MOVIORA VIP subscription state per user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "planId": { "type": "string", "enum": ["vip_monthly", "vip_quarterly", "vip_yearly"] },
+        "status": { "type": "string", "enum": ["active", "cancelled", "expired"] },
+        "provider": { "type": "string", "enum": ["google_play", "admin_grant"] },
+        "purchaseToken": { "type": "string" },
+        "priceDisplay": { "type": "string" },
+        "startsAtEpochMs": { "type": "integer" },
+        "expiresAtEpochMs": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "planId", "status", "provider", "purchaseToken", "startsAtEpochMs", "expiresAtEpochMs", "createdAt", "updatedAt"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Verified VIP billing invoice record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "planId": { "type": "string" },
+        "amountDisplay": { "type": "string" },
+        "currency": { "type": "string" },
+        "orderId": { "type": "string" },
+        "purchaseToken": { "type": "string" },
+        "status": { "type": "string", "enum": ["verified", "refunded"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "planId", "amountDisplay", "currency", "orderId", "purchaseToken", "status", "createdAt"]
+    },
+    "AppNotification": {
+      "title": "AppNotification",
+      "description": "Broadcast or user-targeted notification.",
+      "type": "object",
+      "properties": {
+        "targetUid": { "type": "string" },
+        "category": { "type": "string", "enum": ["new_release", "new_episode", "vip", "system", "favorite"] },
+        "titleAr": { "type": "string" },
+        "bodyAr": { "type": "string" },
+        "mediaId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["targetUid", "category", "titleAr", "bodyAr", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Moderation report against abusive review or content.",
+      "type": "object",
+      "properties": {
+        "reporterId": { "type": "string" },
+        "targetId": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["review", "watchlist", "media"] },
+        "reason": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "resolved", "dismissed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reporterId", "targetId", "targetType", "reason", "status", "createdAt", "updatedAt"]
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "Technical support request submitted by a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "isVipPriority": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["open", "answered", "closed"] },
+        "adminReply": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "subject", "message", "isVipPriority", "status", "createdAt", "updatedAt"]
+    },
+    "PlaybackErrorLog": {
+      "title": "PlaybackErrorLog",
+      "description": "Player diagnostic error report.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "mediaId": { "type": "string" },
+        "errorCode": { "type": "string" },
+        "errorMessage": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "mediaId", "errorCode", "errorMessage", "createdAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Server-side authorized administrator record.",
+      "type": "object",
+      "properties": {
+        "adminUid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["super_admin", "moderator", "content_manager"] },
+        "grantedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["adminUid", "email", "role", "grantedBy", "createdAt"]
+    },
+    "AdminAuditLog": {
+      "title": "AdminAuditLog",
+      "description": "Immutable audit log of admin operations.",
+      "type": "object",
+      "properties": {
+        "adminUid": { "type": "string" },
+        "action": { "type": "string" },
+        "targetId": { "type": "string" },
+        "details": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["adminUid", "action", "targetId", "details", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "UserProfile", "description": "Private user profile with PII isolation." },
+    "/users/{userId}/favorites/{mediaId}": { "schema": "FavoriteItem", "description": "User favorite works." },
+    "/users/{userId}/watch_history/{itemId}": { "schema": "WatchHistoryEntry", "description": "User watch progress and completed episodes." },
+    "/users/{userId}/search_history/{queryId}": { "schema": "SearchHistoryEntry", "description": "User search history." },
+    "/users/{userId}/sessions/{sessionId}": { "schema": "UserSession", "description": "User active device sessions." },
+    "/public_profiles/{userId}": { "schema": "PublicProfile", "description": "Non-PII public community profile." },
+    "/media_items/{mediaId}": { "schema": "MediaItem", "description": "Movies, series, and historical archive catalogue." },
+    "/seasons/{seasonId}": { "schema": "Season", "description": "Series seasons." },
+    "/episodes/{episodeId}": { "schema": "Episode", "description": "Series episodes." },
+    "/people/{personId}": { "schema": "Person", "description": "Actors, directors, and producers." },
+    "/video_sources/{sourceId}": { "schema": "VideoSource", "description": "Licensed HTTPS video stream sources." },
+    "/subtitle_sources/{subId}": { "schema": "SubtitleSource", "description": "Compatible subtitle tracks." },
+    "/watchlists/{listId}": { "schema": "Watchlist", "description": "Private and public user watchlists." },
+    "/reviews/{reviewId}": { "schema": "Review", "description": "Composite-keyed user reviews." },
+    "/follows/{followId}": { "schema": "Follow", "description": "User community follow relationships." },
+    "/subscriptions/{userId}": { "schema": "Subscription", "description": "MOVIORA VIP subscriptions." },
+    "/payments/{paymentId}": { "schema": "Payment", "description": "Verified payment invoices." },
+    "/notifications/{notifId}": { "schema": "AppNotification", "description": "Broadcast and personal notifications." },
+    "/reports/{reportId}": { "schema": "Report", "description": "Moderation reports." },
+    "/support_tickets/{ticketId}": { "schema": "SupportTicket", "description": "User technical support tickets." },
+    "/playback_errors/{errorId}": { "schema": "PlaybackErrorLog", "description": "Video playback diagnostic logs." },
+    "/admins/{adminUid}": { "schema": "AdminRecord", "description": "Authorized server-side administrators." },
+    "/admin_audit_logs/{logId}": { "schema": "AdminAuditLog", "description": "Immutable admin audit trail." }
+  }
+}

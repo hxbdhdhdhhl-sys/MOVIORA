@@ -1,0 +1,636 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Pillar 1: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Core Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isHttpsUrl(url) {
+      return url is string && url.size() <= 1024 && (url.size() == 0 || url.matches('^https://.*'));
+    }
+
+    // Zero-DB-read check for verified owner email (safe for list operations)
+    function isBootstrappedAdmin() {
+      return isSignedIn() &&
+             'email' in request.auth.token &&
+             request.auth.token.email == 'hxbdhdhdhhl@gmail.com' &&
+             'email_verified' in request.auth.token &&
+             request.auth.token.email_verified == true;
+    }
+
+    // Full server-side Admin RBAC check (for single-doc reads/writes)
+    function isAdmin() {
+      return isBootstrappedAdmin() ||
+             (isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // --- Validation Blueprints ---
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+             (!('emailVerified' in data) || data.emailVerified is bool) &&
+             (!('photoUrl' in data) || isHttpsUrl(data.photoUrl)) &&
+             (!('preferredLanguage' in data) || (data.preferredLanguage is string && data.preferredLanguage.size() <= 12)) &&
+             (!('preferredSubtitleLang' in data) || (data.preferredSubtitleLang is string && data.preferredSubtitleLang.size() <= 12)) &&
+             (!('themeMode' in data) || (data.themeMode is string && data.themeMode in ['dark', 'light', 'vip_gold', 'vip_velvet'])) &&
+             (!('notificationsEnabled' in data) || data.notificationsEnabled is bool) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPublicProfile(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             (!('photoUrl' in data) || isHttpsUrl(data.photoUrl)) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 300)) &&
+             (!('isVip' in data) || data.isVip is bool) &&
+             data.isPublic is bool &&
+             (!('followersCount' in data) || (data.followersCount is int && data.followersCount >= 0)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidMediaItem(data) {
+      return data.titleAr is string && data.titleAr.size() >= 1 && data.titleAr.size() <= 200 &&
+             data.titleOriginal is string && data.titleOriginal.size() >= 1 && data.titleOriginal.size() <= 200 &&
+             (!('titleEn' in data) || (data.titleEn is string && data.titleEn.size() <= 200)) &&
+             (!('titleRu' in data) || (data.titleRu is string && data.titleRu.size() <= 200)) &&
+             data.kind is string && data.kind in ['movie', 'series', 'documentary'] &&
+             data.year is int && data.year >= 1895 && data.year <= 2035 &&
+             data.country is string && data.country.size() >= 1 && data.country.size() <= 100 &&
+             (!('originalLanguage' in data) || (data.originalLanguage is string && data.originalLanguage.size() <= 50)) &&
+             (!('synopsisAr' in data) || (data.synopsisAr is string && data.synopsisAr.size() <= 4000)) &&
+             (!('synopsisEn' in data) || (data.synopsisEn is string && data.synopsisEn.size() <= 4000)) &&
+             (!('synopsisRu' in data) || (data.synopsisRu is string && data.synopsisRu.size() <= 4000)) &&
+             (!('genres' in data) || (data.genres is list && data.genres.size() <= 15 && (data.genres.size() == 0 || data.genres[0] is string))) &&
+             (!('director' in data) || (data.director is string && data.director.size() <= 150)) &&
+             (!('cast' in data) || (data.cast is list && data.cast.size() <= 25 && (data.cast.size() == 0 || data.cast[0] is string))) &&
+             (!('posterUrl' in data) || isHttpsUrl(data.posterUrl)) &&
+             (!('backdropUrl' in data) || isHttpsUrl(data.backdropUrl)) &&
+             (!('accentColorHex' in data) || (data.accentColorHex is string && data.accentColorHex.size() <= 12)) &&
+             (!('seasonsCount' in data) || (data.seasonsCount is int && data.seasonsCount >= 0)) &&
+             (!('episodesCount' in data) || (data.episodesCount is int && data.episodesCount >= 0)) &&
+             (!('durationMinutes' in data) || (data.durationMinutes is int && data.durationMinutes >= 0)) &&
+             (!('rating' in data) || ((data.rating is int || data.rating is float) && data.rating >= 0 && data.rating <= 10)) &&
+             (!('viewsCount' in data) || (data.viewsCount is int && data.viewsCount >= 0)) &&
+             (!('availableSubtitles' in data) || (data.availableSubtitles is list && data.availableSubtitles.size() <= 15 && (data.availableSubtitles.size() == 0 || data.availableSubtitles[0] is string))) &&
+             (!('availableAudio' in data) || (data.availableAudio is list && data.availableAudio.size() <= 10 && (data.availableAudio.size() == 0 || data.availableAudio[0] is string))) &&
+             data.streamStatus is string && data.streamStatus in ['LICENSED_ACTIVE', 'ARCHIVE_METADATA_ONLY'] &&
+             (!('streamUrl' in data) || isHttpsUrl(data.streamUrl)) &&
+             (!('streamProtocol' in data) || (data.streamProtocol is string && data.streamProtocol in ['HLS', 'DASH', 'MP4', 'NONE'])) &&
+             (!('licenseInfo' in data) || (data.licenseInfo is string && data.licenseInfo.size() <= 300)) &&
+             (!('isVipExclusive' in data) || data.isVipExclusive is bool) &&
+             (!('isDownloadAllowed' in data) || data.isDownloadAllowed is bool) &&
+             (!('archiveSection' in data) || (data.archiveSection is string && data.archiveSection.size() <= 100)) &&
+             (!('warConflict' in data) || (data.warConflict is string && data.warConflict.size() <= 100)) &&
+             (!('historicalEra' in data) || (data.historicalEra is string && data.historicalEra.size() <= 100)) &&
+             (!('historicalAccuracyNote' in data) || (data.historicalAccuracyNote is string && data.historicalAccuracyNote.size() <= 1500)) &&
+             (!('upcomingSeasonNote' in data) || (data.upcomingSeasonNote is string && data.upcomingSeasonNote.size() <= 500)) &&
+             data.isPublished is bool &&
+             (!('isDeleted' in data) || data.isDeleted is bool) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSeason(data) {
+      return data.seriesId is string && isValidId(data.seriesId) &&
+             data.seasonNumber is int && data.seasonNumber >= 1 && data.seasonNumber <= 100 &&
+             data.titleAr is string && data.titleAr.size() >= 1 && data.titleAr.size() <= 150 &&
+             (!('titleEn' in data) || (data.titleEn is string && data.titleEn.size() <= 150)) &&
+             (!('year' in data) || (data.year is int && data.year >= 1900 && data.year <= 2035)) &&
+             (!('episodesCount' in data) || (data.episodesCount is int && data.episodesCount >= 0)) &&
+             (!('isUpcoming' in data) || data.isUpcoming is bool) &&
+             data.isPublished is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidEpisode(data) {
+      return data.seriesId is string && isValidId(data.seriesId) &&
+             data.seasonNumber is int && data.seasonNumber >= 1 &&
+             data.episodeNumber is int && data.episodeNumber >= 1 &&
+             data.titleAr is string && data.titleAr.size() >= 1 && data.titleAr.size() <= 200 &&
+             (!('titleEn' in data) || (data.titleEn is string && data.titleEn.size() <= 200)) &&
+             (!('descriptionAr' in data) || (data.descriptionAr is string && data.descriptionAr.size() <= 2000)) &&
+             (!('thumbnailUrl' in data) || isHttpsUrl(data.thumbnailUrl)) &&
+             data.durationSeconds is int && data.durationSeconds >= 0 &&
+             (!('streamUrl' in data) || isHttpsUrl(data.streamUrl)) &&
+             (!('streamProtocol' in data) || (data.streamProtocol is string && data.streamProtocol in ['HLS', 'DASH', 'MP4', 'NONE'])) &&
+             (!('subtitleUrlAr' in data) || isHttpsUrl(data.subtitleUrlAr)) &&
+             (!('subtitleUrlEn' in data) || isHttpsUrl(data.subtitleUrlEn)) &&
+             data.isPublished is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPerson(data) {
+      return data.nameAr is string && data.nameAr.size() >= 1 && data.nameAr.size() <= 120 &&
+             data.nameEn is string && data.nameEn.size() >= 1 && data.nameEn.size() <= 120 &&
+             (!('nameRu' in data) || (data.nameRu is string && data.nameRu.size() <= 120)) &&
+             data.role is string && data.role in ['actor', 'director', 'producer', 'actor_director'] &&
+             (!('birthYear' in data) || (data.birthYear is string && data.birthYear.size() <= 20)) &&
+             data.country is string && data.country.size() >= 1 && data.country.size() <= 80 &&
+             (!('bioAr' in data) || (data.bioAr is string && data.bioAr.size() <= 3000)) &&
+             (!('photoUrl' in data) || isHttpsUrl(data.photoUrl)) &&
+             (!('notableWorks' in data) || (data.notableWorks is list && data.notableWorks.size() <= 20 && (data.notableWorks.size() == 0 || data.notableWorks[0] is string))) &&
+             data.isPublished is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidVideoSource(data) {
+      return data.targetId is string && isValidId(data.targetId) &&
+             data.targetType is string && data.targetType in ['movie', 'episode'] &&
+             data.url is string && data.url.size() >= 8 && data.url.size() <= 1024 && data.url.matches('^https://.*') &&
+             data.protocol is string && data.protocol in ['HLS', 'DASH', 'MP4'] &&
+             (!('maxQualityLabel' in data) || (data.maxQualityLabel is string && data.maxQualityLabel.size() <= 20)) &&
+             data.licenseName is string && data.licenseName.size() >= 2 && data.licenseName.size() <= 200 &&
+             (!('allowOffline' in data) || data.allowOffline is bool) &&
+             data.isPublished is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSubtitleSource(data) {
+      return data.targetId is string && isValidId(data.targetId) &&
+             data.languageCode is string && data.languageCode.size() >= 2 && data.languageCode.size() <= 10 &&
+             data.languageLabel is string && data.languageLabel.size() >= 2 && data.languageLabel.size() <= 50 &&
+             data.url is string && data.url.size() >= 8 && data.url.size() <= 1024 && data.url.matches('^https://.*') &&
+             data.format is string && data.format in ['VTT', 'SRT'] &&
+             data.isPublished is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidFavorite(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.mediaId is string && isValidId(data.mediaId) &&
+             data.titleAr is string && data.titleAr.size() >= 1 && data.titleAr.size() <= 200 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidWatchHistory(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.mediaId is string && isValidId(data.mediaId) &&
+             (!('episodeId' in data) || (data.episodeId is string && data.episodeId.size() <= 128)) &&
+             (!('seasonNumber' in data) || (data.seasonNumber is int && data.seasonNumber >= 0)) &&
+             (!('episodeNumber' in data) || (data.episodeNumber is int && data.episodeNumber >= 0)) &&
+             data.positionMs is int && data.positionMs >= 0 &&
+             data.durationMs is int && data.durationMs >= 0 &&
+             data.completed is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSearchHistory(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.query is string && data.query.size() >= 1 && data.query.size() <= 120 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidSession(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.deviceModel is string && data.deviceModel.size() >= 1 && data.deviceModel.size() <= 120 &&
+             data.platform is string && data.platform.size() >= 1 && data.platform.size() <= 40 &&
+             data.isActive is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidWatchlist(data) {
+      return data.userId is string &&
+             data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 80 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 500)) &&
+             data.isPublic is bool &&
+             data.mediaIds is list && data.mediaIds.size() <= 100 && (data.mediaIds.size() == 0 || data.mediaIds[0] is string) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidReview(data) {
+      return data.userId is string &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80 &&
+             data.mediaId is string && isValidId(data.mediaId) &&
+             data.rating is int && data.rating >= 1 && data.rating <= 5 &&
+             data.comment is string && data.comment.size() >= 2 && data.comment.size() <= 2000 &&
+             data.status is string && data.status in ['approved', 'hidden'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidFollow(data) {
+      return data.followerId is string && data.followerId == request.auth.uid &&
+             data.targetUserId is string && isValidId(data.targetUserId) &&
+             data.followerId != data.targetUserId &&
+             data.targetName is string && data.targetName.size() >= 1 && data.targetName.size() <= 80 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidSubscription(data) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.planId is string && data.planId in ['vip_monthly', 'vip_quarterly', 'vip_yearly'] &&
+             data.status is string && data.status in ['active', 'cancelled', 'expired'] &&
+             data.provider is string && data.provider in ['google_play', 'admin_grant'] &&
+             data.purchaseToken is string && data.purchaseToken.size() >= 6 && data.purchaseToken.size() <= 512 &&
+             (!('priceDisplay' in data) || (data.priceDisplay is string && data.priceDisplay.size() <= 40)) &&
+             data.startsAtEpochMs is int && data.startsAtEpochMs > 0 &&
+             data.expiresAtEpochMs is int && data.expiresAtEpochMs > data.startsAtEpochMs &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPayment(data) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.planId is string && data.planId in ['vip_monthly', 'vip_quarterly', 'vip_yearly'] &&
+             data.amountDisplay is string && data.amountDisplay.size() >= 1 && data.amountDisplay.size() <= 40 &&
+             data.currency is string && data.currency.size() >= 2 && data.currency.size() <= 10 &&
+             data.orderId is string && data.orderId.size() >= 3 && data.orderId.size() <= 128 &&
+             data.purchaseToken is string && data.purchaseToken.size() >= 6 && data.purchaseToken.size() <= 512 &&
+             data.status is string && data.status in ['verified', 'refunded'] &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidNotification(data) {
+      return data.targetUid is string && data.targetUid.size() >= 1 && data.targetUid.size() <= 128 &&
+             data.category is string && data.category in ['new_release', 'new_episode', 'vip', 'system', 'favorite'] &&
+             data.titleAr is string && data.titleAr.size() >= 1 && data.titleAr.size() <= 180 &&
+             data.bodyAr is string && data.bodyAr.size() >= 1 && data.bodyAr.size() <= 1000 &&
+             (!('mediaId' in data) || (data.mediaId is string && data.mediaId.size() <= 128)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidReport(data) {
+      return data.reporterId is string &&
+             data.targetId is string && isValidId(data.targetId) &&
+             data.targetType is string && data.targetType in ['review', 'watchlist', 'media'] &&
+             data.reason is string && data.reason.size() >= 3 && data.reason.size() <= 1000 &&
+             data.status is string && data.status in ['open', 'resolved', 'dismissed'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSupportTicket(data) {
+      return data.userId is string &&
+             data.subject is string && data.subject.size() >= 3 && data.subject.size() <= 160 &&
+             data.message is string && data.message.size() >= 5 && data.message.size() <= 3000 &&
+             data.isVipPriority is bool &&
+             data.status is string && data.status in ['open', 'answered', 'closed'] &&
+             (!('adminReply' in data) || (data.adminReply is string && data.adminReply.size() <= 3000)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPlaybackError(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.mediaId is string && isValidId(data.mediaId) &&
+             data.errorCode is string && data.errorCode.size() >= 1 && data.errorCode.size() <= 80 &&
+             data.errorMessage is string && data.errorMessage.size() >= 1 && data.errorMessage.size() <= 1000 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidAdminRecord(data) {
+      return data.adminUid is string && isValidId(data.adminUid) &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+             data.role is string && data.role in ['super_admin', 'moderator', 'content_manager'] &&
+             data.grantedBy is string && data.grantedBy.size() >= 1 && data.grantedBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidAuditLog(data) {
+      return data.adminUid is string && data.adminUid == request.auth.uid &&
+             data.action is string && data.action.size() >= 2 && data.action.size() <= 80 &&
+             data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 128 &&
+             data.details is string && data.details.size() >= 1 && data.details.size() <= 1000 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Private User Profiles & User Subcollections (Strict PII Isolation)
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isBootstrappedAdmin();
+
+      allow create: if isSignedIn() && isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'email', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'email', 'emailVerified', 'photoUrl', 'preferredLanguage', 'preferredSubtitleLang', 'themeMode', 'notificationsEnabled', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() && isValidId(userId) &&
+                       isValidUserProfile(incoming()) && (
+                         (request.auth.uid == userId &&
+                          incoming().userId == existing().userId &&
+                          incoming().createdAt == existing().createdAt &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'emailVerified', 'photoUrl', 'preferredLanguage', 'preferredSubtitleLang', 'themeMode', 'notificationsEnabled', 'updatedAt'])) ||
+                         isAdmin()
+                       );
+
+      allow delete: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+
+      match /favorites/{mediaId} {
+        allow get: if isSignedIn() && request.auth.uid == userId && isValidId(mediaId);
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId && isValidId(mediaId) &&
+                         incoming().mediaId == mediaId &&
+                         incoming().keys().hasAll(['userId', 'mediaId', 'titleAr', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'mediaId', 'titleAr', 'createdAt']) &&
+                         isValidFavorite(incoming());
+        allow update: if false;
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(mediaId);
+      }
+
+      match /watch_history/{itemId} {
+        allow get: if isSignedIn() && request.auth.uid == userId && isValidId(itemId);
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId && isValidId(itemId) &&
+                         incoming().keys().hasAll(['userId', 'mediaId', 'positionMs', 'durationMs', 'completed', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'mediaId', 'episodeId', 'seasonNumber', 'episodeNumber', 'positionMs', 'durationMs', 'completed', 'createdAt', 'updatedAt']) &&
+                         isValidWatchHistory(incoming());
+        allow update: if isSignedIn() && request.auth.uid == userId && isValidId(itemId) &&
+                         isValidWatchHistory(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['episodeId', 'seasonNumber', 'episodeNumber', 'positionMs', 'durationMs', 'completed', 'updatedAt']);
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(itemId);
+      }
+
+      match /search_history/{queryId} {
+        allow get: if isSignedIn() && request.auth.uid == userId && isValidId(queryId);
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId && isValidId(queryId) &&
+                         incoming().keys().hasAll(['userId', 'query', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'query', 'createdAt']) &&
+                         isValidSearchHistory(incoming());
+        allow update: if false;
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(queryId);
+      }
+
+      match /sessions/{sessionId} {
+        allow get: if isSignedIn() && request.auth.uid == userId && isValidId(sessionId);
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId && isValidId(sessionId) &&
+                         incoming().keys().hasAll(['userId', 'deviceModel', 'platform', 'isActive', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'deviceModel', 'platform', 'isActive', 'createdAt', 'updatedAt']) &&
+                         isValidSession(incoming());
+        allow update: if isSignedIn() && request.auth.uid == userId && isValidId(sessionId) &&
+                         isValidSession(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['deviceModel', 'isActive', 'updatedAt']);
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(sessionId);
+      }
+    }
+
+    // 2. Non-PII Public Community Profiles
+    match /public_profiles/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (resource == null || existing().isPublic == true || request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && (existing().isPublic == true || existing().userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'isPublic', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'photoUrl', 'bio', 'isVip', 'isPublic', 'followersCount', 'createdAt', 'updatedAt']) &&
+                       isValidPublicProfile(incoming());
+      allow update: if isSignedIn() && isValidId(userId) &&
+                       isValidPublicProfile(incoming()) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'bio', 'isVip', 'isPublic', 'followersCount', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+    }
+
+    // 3. Catalogue Collections (Published Read, Admin Write)
+    match /media_items/{mediaId} {
+      allow get: if isSignedIn() && isValidId(mediaId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isSignedIn() && (existing().isPublished == true || isBootstrappedAdmin());
+      allow create: if isValidId(mediaId) && isValidMediaItem(incoming()) && isAdmin();
+      allow update: if isValidId(mediaId) && isValidMediaItem(incoming()) && (
+                       isAdmin() ||
+                       (isSignedIn() &&
+                        incoming().createdAt == existing().createdAt &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['viewsCount', 'updatedAt']) &&
+                        incoming().viewsCount == existing().viewsCount + 1)
+                     );
+      allow delete: if isValidId(mediaId) && isAdmin();
+    }
+
+    match /seasons/{seasonId} {
+      allow get: if isSignedIn() && isValidId(seasonId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isSignedIn() && (existing().isPublished == true || isBootstrappedAdmin());
+      allow create: if isValidId(seasonId) && isValidSeason(incoming()) && isAdmin();
+      allow update: if isValidId(seasonId) && isValidSeason(incoming()) && isAdmin();
+      allow delete: if isValidId(seasonId) && isAdmin();
+    }
+
+    match /episodes/{episodeId} {
+      allow get: if isSignedIn() && isValidId(episodeId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isSignedIn() && (existing().isPublished == true || isBootstrappedAdmin());
+      allow create: if isValidId(episodeId) && isValidEpisode(incoming()) && isAdmin();
+      allow update: if isValidId(episodeId) && isValidEpisode(incoming()) && isAdmin();
+      allow delete: if isValidId(episodeId) && isAdmin();
+    }
+
+    match /people/{personId} {
+      allow get: if isSignedIn() && isValidId(personId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isSignedIn() && (existing().isPublished == true || isBootstrappedAdmin());
+      allow create: if isValidId(personId) && isValidPerson(incoming()) && isAdmin();
+      allow update: if isValidId(personId) && isValidPerson(incoming()) && isAdmin();
+      allow delete: if isValidId(personId) && isAdmin();
+    }
+
+    match /video_sources/{sourceId} {
+      allow get: if isSignedIn() && isValidId(sourceId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isSignedIn() && (existing().isPublished == true || isBootstrappedAdmin());
+      allow create: if isValidId(sourceId) && isValidVideoSource(incoming()) && isAdmin();
+      allow update: if isValidId(sourceId) && isValidVideoSource(incoming()) && isAdmin();
+      allow delete: if isValidId(sourceId) && isAdmin();
+    }
+
+    match /subtitle_sources/{subId} {
+      allow get: if isSignedIn() && isValidId(subId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isSignedIn() && (existing().isPublished == true || isBootstrappedAdmin());
+      allow create: if isValidId(subId) && isValidSubtitleSource(incoming()) && isAdmin();
+      allow update: if isValidId(subId) && isValidSubtitleSource(incoming()) && isAdmin();
+      allow delete: if isValidId(subId) && isAdmin();
+    }
+
+    // 4. Watchlists (Private & Public Community)
+    match /watchlists/{listId} {
+      allow get: if isSignedIn() && isValidId(listId) && (resource == null || existing().userId == request.auth.uid || existing().isPublic == true || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || existing().isPublic == true || isBootstrappedAdmin());
+      allow create: if isSignedIn() && isValidId(listId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'ownerName', 'name', 'isPublic', 'mediaIds', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'ownerName', 'name', 'description', 'isPublic', 'mediaIds', 'createdAt', 'updatedAt']) &&
+                       isValidWatchlist(incoming());
+      allow update: if isSignedIn() && isValidId(listId) &&
+                       isValidWatchlist(incoming()) && (
+                         (existing().userId == request.auth.uid &&
+                          incoming().userId == existing().userId &&
+                          incoming().createdAt == existing().createdAt &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['ownerName', 'name', 'description', 'isPublic', 'mediaIds', 'updatedAt'])) ||
+                         isAdmin()
+                       );
+      allow delete: if isSignedIn() && isValidId(listId) && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // 5. Reviews (Composite ID: userId_mediaId prevents duplicates)
+    match /reviews/{reviewId} {
+      allow get: if isSignedIn() && isValidId(reviewId) && (resource == null || existing().status == 'approved' || existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().status == 'approved' || existing().userId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isSignedIn() && isValidId(reviewId) &&
+                       reviewId == (request.auth.uid + '_' + incoming().mediaId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().status == 'approved' &&
+                       incoming().keys().hasAll(['userId', 'authorName', 'mediaId', 'rating', 'comment', 'status', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'authorName', 'mediaId', 'rating', 'comment', 'status', 'createdAt', 'updatedAt']) &&
+                       isValidReview(incoming());
+      allow update: if isSignedIn() && isValidId(reviewId) &&
+                       isValidReview(incoming()) && (
+                         (existing().userId == request.auth.uid &&
+                          incoming().userId == existing().userId &&
+                          incoming().mediaId == existing().mediaId &&
+                          incoming().status == existing().status &&
+                          incoming().createdAt == existing().createdAt &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['authorName', 'rating', 'comment', 'updatedAt'])) ||
+                         isAdmin()
+                       );
+      allow delete: if isSignedIn() && isValidId(reviewId) && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // 6. Community Follows
+    match /follows/{followId} {
+      allow get: if isSignedIn() && isValidId(followId) && (resource == null || existing().followerId == request.auth.uid || existing().targetUserId == request.auth.uid);
+      allow list: if isSignedIn() && (existing().followerId == request.auth.uid || existing().targetUserId == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(followId) &&
+                       followId == (request.auth.uid + '_' + incoming().targetUserId) &&
+                       incoming().keys().hasAll(['followerId', 'targetUserId', 'targetName', 'createdAt']) &&
+                       incoming().keys().hasOnly(['followerId', 'targetUserId', 'targetName', 'createdAt']) &&
+                       isValidFollow(incoming());
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(followId) && existing().followerId == request.auth.uid;
+    }
+
+    // 7. MOVIORA VIP Subscriptions & Verified Payments
+    match /subscriptions/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isSignedIn() && isValidId(userId) &&
+                       incoming().userId == userId &&
+                       isValidSubscription(incoming()) && (
+                         isAdmin() ||
+                         (request.auth.uid == userId && incoming().provider == 'google_play')
+                       );
+      allow update: if isSignedIn() && isValidId(userId) &&
+                       isValidSubscription(incoming()) && (
+                         isAdmin() ||
+                         (request.auth.uid == userId &&
+                          incoming().userId == existing().userId &&
+                          incoming().createdAt == existing().createdAt &&
+                          (incoming().provider == 'google_play' ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])))
+                       );
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow get: if isSignedIn() && isValidId(paymentId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isSignedIn() && isValidId(paymentId) &&
+                       isValidPayment(incoming()) && (
+                         (incoming().userId == request.auth.uid && incoming().status == 'verified') ||
+                         isAdmin()
+                       );
+      allow update: if isValidId(paymentId) && isValidPayment(incoming()) && isAdmin();
+      allow delete: if false;
+    }
+
+    // 8. Notifications, Reports, Support Tickets, Diagnostics
+    match /notifications/{notifId} {
+      allow get: if isSignedIn() && isValidId(notifId) && (existing().targetUid == 'ALL' || existing().targetUid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().targetUid == 'ALL' || existing().targetUid == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isValidId(notifId) && isValidNotification(incoming()) && isAdmin();
+      allow update: if isValidId(notifId) && isValidNotification(incoming()) && isAdmin();
+      allow delete: if isValidId(notifId) && isAdmin();
+    }
+
+    match /reports/{reportId} {
+      allow get: if isSignedIn() && isValidId(reportId) && (existing().reporterId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().reporterId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isSignedIn() && isValidId(reportId) &&
+                       incoming().reporterId == request.auth.uid &&
+                       incoming().status == 'open' &&
+                       incoming().keys().hasAll(['reporterId', 'targetId', 'targetType', 'reason', 'status', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['reporterId', 'targetId', 'targetType', 'reason', 'status', 'createdAt', 'updatedAt']) &&
+                       isValidReport(incoming());
+      allow update: if isValidId(reportId) && isValidReport(incoming()) && isAdmin();
+      allow delete: if isValidId(reportId) && isAdmin();
+    }
+
+    match /support_tickets/{ticketId} {
+      allow get: if isSignedIn() && isValidId(ticketId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isSignedIn() && isValidId(ticketId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().status == 'open' &&
+                       incoming().keys().hasAll(['userId', 'subject', 'message', 'isVipPriority', 'status', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'subject', 'message', 'isVipPriority', 'status', 'adminReply', 'createdAt', 'updatedAt']) &&
+                       isValidSupportTicket(incoming());
+      allow update: if isValidId(ticketId) && isValidSupportTicket(incoming()) && isAdmin();
+      allow delete: if isValidId(ticketId) && isAdmin();
+    }
+
+    match /playback_errors/{errorId} {
+      allow get: if isSignedIn() && isValidId(errorId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isSignedIn() && isValidId(errorId) &&
+                       incoming().keys().hasAll(['userId', 'mediaId', 'errorCode', 'errorMessage', 'createdAt']) &&
+                       incoming().keys().hasOnly(['userId', 'mediaId', 'errorCode', 'errorMessage', 'createdAt']) &&
+                       isValidPlaybackError(incoming());
+      allow update: if false;
+      allow delete: if isValidId(errorId) && isAdmin();
+    }
+
+    // 9. Server-Side Admins & Immutable Audit Logs
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && isValidId(adminUid) && (request.auth.uid == adminUid || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isValidId(adminUid) && isValidAdminRecord(incoming()) && isAdmin();
+      allow update: if isValidId(adminUid) && isValidAdminRecord(incoming()) && isAdmin();
+      allow delete: if isValidId(adminUid) && isBootstrappedAdmin();
+    }
+
+    match /admin_audit_logs/{logId} {
+      allow get: if isValidId(logId) && isAdmin();
+      allow list: if isBootstrappedAdmin();
+      allow create: if isValidId(logId) && isValidAuditLog(incoming()) && isAdmin();
+      allow update, delete: if false;
+    }
+  }
+}

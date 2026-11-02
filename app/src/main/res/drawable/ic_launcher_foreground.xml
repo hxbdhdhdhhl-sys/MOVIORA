@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Outer Golden Cinema Ring -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#D9B56D"
+        android:strokeWidth="2.6"
+        android:pathData="M54,23A31,31 0 1,1 53.99,23Z" />
+    <!-- Crowned M + Cinema Play Crest -->
+    <path
+        android:fillColor="#D9B56D"
+        android:pathData="M33,70L33,38L41,38L54,55L67,38L75,38L75,70L67,70L67,50L54,66L41,50L41,70Z" />
+    <!-- Royal Play Gem Accent -->
+    <path
+        android:fillColor="#F5F1E8"
+        android:pathData="M50,31L58,31L54,37Z" />
+</vector>
